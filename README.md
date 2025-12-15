@@ -1,6 +1,7 @@
 # OptiGen
 
-![OptiGen Logo](static/logo.png)
+<img src="static/logo.png" alt="drawing" width="200"/>
+
 
 An AI-powered optimization modeling assistant built on [LangGraph](https://github.com/langchain-ai/langgraph).
 

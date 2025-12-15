@@ -5,7 +5,11 @@ description = "OptiGen is a tool for automatically generating optimization proje
 authors = [
     { name = "Amir Rajabi", email = "amir@optigen.io" },
 ]
+license = { file = "LICENSE" }
 readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+]
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "langgraph>=1.0.0",
