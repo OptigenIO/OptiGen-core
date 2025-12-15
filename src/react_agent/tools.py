@@ -138,10 +138,10 @@ def update_project_metadata(
         runtime.context.project_settings.update(title=title, description=description)
         updates.append(f"title='{title}'")
         updates.append(f"description='{description}'")
-    if title:
+    elif title:
         runtime.context.project_settings.update(title=title)
         updates.append(f"title='{title}'")
-    if description:
+    elif description:
         runtime.context.project_settings.update(description=description)
         updates.append(f"description='{description}'")
 

@@ -32,7 +32,7 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           uv venv
           uv pip install -r pyproject.toml
-          uv pip install -U pytest-asyncio
+          uv pip install -U anyio
       - name: Run integration tests
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
