@@ -1,6 +1,9 @@
+"""Define the agent graph configuration."""
+
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain.chat_models import init_chat_model
+
 from react_agent.context import Context
 from react_agent.prompts import BASE_SYSTEM_PROMPT
 from react_agent.tools import ALL_TOOLS

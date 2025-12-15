@@ -1,3 +1,5 @@
+"""Define tools available to the agent for problem specification and search."""
+
 import json
 from typing import Any, Callable, List, Literal, Optional, cast
 
@@ -5,9 +7,8 @@ from langchain_tavily import TavilySearch
 from langgraph.runtime import get_runtime
 
 from react_agent.context import Context
-from react_agent.project_snapshot import Constraint
+from react_agent.project_snapshot import Constraint, UserAPISchemaDefinition
 
-from react_agent.project_snapshot import UserAPISchemaDefinition
 
 async def search(query: str) -> Optional[dict[str, Any]]:
     """Search for general web results.
@@ -51,7 +52,7 @@ def add_constraint(
     where: str = "",
     rank: Optional[int] = None,
 ) -> str:
-    """Add a new constraint or objective to the optimization problem.
+    r"""Add a new constraint or objective to the optimization problem.
 
     Use this tool to add both constraints and objectives:
     - **Objectives** = what to maximize/minimize. Add as "soft" constraints with a **rank** (1 = highest priority).

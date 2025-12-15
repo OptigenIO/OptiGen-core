@@ -42,6 +42,7 @@ class Context(BaseModel):
     )
 
     def __init__(self, **data):
+        """Initialize the context, fetching environment variables for attributes not passed as args."""
         super().__init__(**data)
         # Fetch env vars for attributes that were not passed as args.
         for name in self.__class__.model_fields:

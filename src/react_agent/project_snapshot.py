@@ -1,3 +1,5 @@
+"""Define project snapshot models for optimization problem specifications."""
+
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional
 
@@ -5,6 +7,8 @@ from pydantic import BaseModel
 
 
 class Constraint(BaseModel):
+    """Represents a constraint or objective in an optimization problem."""
+
     name: str
     description: str
     type: Literal["hard", "soft"]
@@ -13,17 +17,22 @@ class Constraint(BaseModel):
     where: str = ""
 
     def __eq__(self, other):
+        """Check equality based on constraint name."""
         if not isinstance(other, Constraint):
             return False
         return self.name == other.name
 
 
 class UserAPISchemaDefinition(BaseModel):
+    """Defines the request and response schemas for the user API."""
+
     request_schema: Dict[str, Any]
     response_schema: Dict[str, Any]
 
 
 class ProjectSnapshot(BaseModel):
+    """Represents a complete snapshot of the optimization problem configuration."""
+
     optigen_snapshot_version: str = "0.0.1"
     snapshot_version: int = 1
     title: str | None = None
@@ -33,9 +42,12 @@ class ProjectSnapshot(BaseModel):
 
 
 class ProjectSettings:
+    """Manages project settings and persistence for optimization problems."""
+
     def __init__(
         self, directory: Path, project_snapshot: ProjectSnapshot | None = None
     ):
+        """Initialize project settings from directory or provided snapshot."""
         self.directory = directory
         self.settings_file = directory / "optigen.json"
 
@@ -48,23 +60,27 @@ class ProjectSettings:
             self.persist_settings()
 
     def persist_settings(self):
+        """Persist the current project snapshot to disk."""
         self.settings_file.write_text(self.project_snapshot.model_dump_json(indent=4))
 
     @property
     def title(self) -> str | None:
+        """Get the project title."""
         return self.project_snapshot.title
 
     @property
     def description(self) -> str | None:
+        """Get the project description."""
         return self.project_snapshot.description
 
     def update(self, **kwargs) -> None:
-        """Generic update method for project settings."""
+        """Update project settings with provided keyword arguments."""
         self.project_snapshot = self.project_snapshot.model_copy(update=kwargs)
         self.persist_settings()
 
     @property
     def constraints(self) -> list[Constraint]:
+        """Get the list of constraints."""
         return self.project_snapshot.constraints
 
     def add_constraint(self, constraint: Constraint) -> None:
@@ -93,6 +109,7 @@ class ProjectSettings:
         return removed
 
     def get_constraint_by_name(self, name: str) -> Constraint | None:
+        """Get a constraint by its name, or None if not found."""
         for constraint in self.project_snapshot.constraints:
             if constraint.name == name:
                 return constraint
@@ -116,14 +133,17 @@ class ProjectSettings:
 
     @property
     def schema_definition(self) -> UserAPISchemaDefinition | None:
+        """Get the API schema definition."""
         return self.project_snapshot.schema_definition
 
     def get_request_schema(self) -> dict | None:
+        """Get the request schema, or None if not defined."""
         if self.project_snapshot.schema_definition:
             return self.project_snapshot.schema_definition.request_schema
         return None
 
     def get_response_schema(self) -> dict | None:
+        """Get the response schema, or None if not defined."""
         if self.project_snapshot.schema_definition:
             return self.project_snapshot.schema_definition.response_schema
         return None
