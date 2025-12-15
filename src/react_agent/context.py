@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
@@ -41,7 +41,7 @@ class Context(BaseModel):
         "constraints, and schema definitions.",
     )
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         """Initialize the context, fetching environment variables for attributes not passed as args."""
         super().__init__(**data)
         # Fetch env vars for attributes that were not passed as args.

@@ -8,7 +8,7 @@ pytestmark = pytest.mark.anyio
 
 async def test_react_agent_simple_passthrough() -> None:
     res = await graph.ainvoke(
-        {"messages": [("user", "What is your name?")]},  # type: ignore
+        {"messages": [("user", "What is your name?")]},
         context=Context(),
     )
 

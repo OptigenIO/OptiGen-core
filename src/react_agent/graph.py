@@ -1,7 +1,7 @@
 """Define the agent graph configuration."""
 
-from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend
+from deepagents import create_deep_agent  # type: ignore[import-untyped]
+from deepagents.backends import FilesystemBackend  # type: ignore[import-untyped]
 from langchain.chat_models import init_chat_model
 
 from react_agent.context import Context

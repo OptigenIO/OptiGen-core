@@ -150,7 +150,7 @@ def update_project_metadata(
     return "No updates provided."
 
 
-def update_request_schema(schema: dict) -> str:
+def update_request_schema(schema: dict[str, Any]) -> str:
     """Update the problem request schema (input format).
 
     Use this to set the request/response schemas once the model is clearer.
@@ -178,7 +178,7 @@ def update_request_schema(schema: dict) -> str:
     return f"Successfully updated request schema: {json.dumps(schema, indent=2)}"
 
 
-def update_response_schema(schema: dict) -> str:
+def update_response_schema(schema: dict[str, Any]) -> str:
     """Update the problem response schema (output format).
 
     Use this to set the request/response schemas once the model is clearer.

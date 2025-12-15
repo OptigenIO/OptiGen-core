@@ -16,7 +16,7 @@ class Constraint(BaseModel):
     formula: str = ""
     where: str = ""
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Check equality based on constraint name."""
         if not isinstance(other, Constraint):
             return False
@@ -59,7 +59,7 @@ class ProjectSettings:
             self.project_snapshot = project_snapshot or ProjectSnapshot()
             self.persist_settings()
 
-    def persist_settings(self):
+    def persist_settings(self) -> None:
         """Persist the current project snapshot to disk."""
         self.settings_file.write_text(self.project_snapshot.model_dump_json(indent=4))
 
@@ -73,7 +73,7 @@ class ProjectSettings:
         """Get the project description."""
         return self.project_snapshot.description
 
-    def update(self, **kwargs) -> None:
+    def update(self, **kwargs: Any) -> None:
         """Update project settings with provided keyword arguments."""
         self.project_snapshot = self.project_snapshot.model_copy(update=kwargs)
         self.persist_settings()
@@ -115,7 +115,7 @@ class ProjectSettings:
                 return constraint
         return None
 
-    def update_constraint(self, name: str, **kwargs) -> bool:
+    def update_constraint(self, name: str, **kwargs: Any) -> bool:
         """Update a constraint by name. Returns True if found and updated."""
         constraint = self.get_constraint_by_name(name)
         if constraint is None:
@@ -136,13 +136,13 @@ class ProjectSettings:
         """Get the API schema definition."""
         return self.project_snapshot.schema_definition
 
-    def get_request_schema(self) -> dict | None:
+    def get_request_schema(self) -> dict[str, Any] | None:
         """Get the request schema, or None if not defined."""
         if self.project_snapshot.schema_definition:
             return self.project_snapshot.schema_definition.request_schema
         return None
 
-    def get_response_schema(self) -> dict | None:
+    def get_response_schema(self) -> dict[str, Any] | None:
         """Get the response schema, or None if not defined."""
         if self.project_snapshot.schema_definition:
             return self.project_snapshot.schema_definition.response_schema
