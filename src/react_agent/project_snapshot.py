@@ -57,12 +57,11 @@ class ProjectSettings:
             )
         else:
             self.project_snapshot = project_snapshot or ProjectSnapshot()
-            self.persist_settings()
 
     def persist_settings(self) -> None:
         """Persist the current project snapshot to disk."""
         self.directory.mkdir(parents=True, exist_ok=True)
-        self.settings_file.write_text(self.project_snapshot.model_dump_json(indent=4))
+        self.settings_file.write_text(self.project_snapshot.model_dump_json(indent=2))
 
     @property
     def title(self) -> str | None:

@@ -65,7 +65,6 @@ class TestInitialization:
         settings = ProjectSettings(temp_directory)
         assert settings.project_snapshot is not None
         assert settings.title is None
-        assert settings.settings_file.exists()
 
     def test_init_loads_existing_snapshot(self, temp_directory: Path) -> None:
         """Test that initialization loads an existing snapshot."""

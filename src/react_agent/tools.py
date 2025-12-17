@@ -91,7 +91,11 @@ def add_constraint(
         where=where,
         rank=rank,
     )
-    runtime.context.project_settings.add_constraint(constraint)
+
+    try:
+        runtime.context.project_settings.add_constraint(constraint)
+    except ValueError as e:
+        return f"Error adding constraint: {e}"
     return f"Successfully added constraint '{name}' ({constraint_type})."
 
 
