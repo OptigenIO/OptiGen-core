@@ -1,0 +1,1 @@
+Most of the code in this folder was adapted from [deepagents-cli](https://github.com/langchain-ai/deepagents/tree/master/libs/deepagents-cli/deepagents_cli). While not ideal, this enabled a quick start.

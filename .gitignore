@@ -164,8 +164,6 @@ cython_debug/
 .langgraph_api
 
 # OptiGen project directory
-working_dir/*
-!working_dir/README.md
 
 # macOS
 .DS_Store
