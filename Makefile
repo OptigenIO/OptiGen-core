@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests stop clean
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -11,6 +11,10 @@ start: stop
 
 stop:
 	@lsof -ti :2024 | xargs kill -9 || true
+	@rm -rf .langgraph_api || true
+
+clean: stop
+	@echo "Cleared LangGraph state and stopped server"
 
 dev:
 	langgraph dev
@@ -74,6 +78,10 @@ spell_fix:
 
 help:
 	@echo '----'
+	@echo 'start                        - start LangGraph dev server (clears state from previous runs)'
+	@echo 'stop                         - stop LangGraph dev server and clear state'
+	@echo 'clean                        - stop server and clear all LangGraph state/checkpoints'
+	@echo 'dev                          - run LangGraph dev server'
 	@echo 'format                       - run code formatters'
 	@echo 'lint                         - run linters'
 	@echo 'test                         - run unit tests'

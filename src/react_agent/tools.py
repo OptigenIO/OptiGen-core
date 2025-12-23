@@ -1,13 +1,14 @@
 """Define tools available to the agent for problem specification and search."""
 
 import json
-from typing import Any, Callable, List, Literal, Optional, cast
+from pathlib import Path
+from typing import Any, Literal, Optional, cast
 
 from langchain_tavily import TavilySearch
 from langgraph.runtime import get_runtime
 
 from react_agent.context import Context
-from react_agent.project_snapshot import Constraint, UserAPISchemaDefinition
+from react_agent.project_snapshot import Constraint, Scenario, UserAPISchemaDefinition
 
 
 async def search(query: str) -> Optional[dict[str, Any]]:
@@ -41,7 +42,7 @@ def read_problem_specification() -> str:
 
 def available_python_dependencies() -> str:
     """Return a list of available Python dependencies to use in solver scripts."""
-    return "pyomo ortools"
+    return "pyomo"
 
 
 def add_constraint(
@@ -210,13 +211,59 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     return f"Successfully updated response schema: {json.dumps(schema, indent=2)}"
 
 
-ALL_TOOLS: List[Callable[..., Any]] = [
-    search,
-    read_problem_specification,
-    available_python_dependencies,
-    add_constraint,
-    remove_constraint,
-    update_project_metadata,
-    update_request_schema,
-    update_response_schema,
-]
+def add_scenario(
+    request_path: str,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+) -> str:
+    """Add a new scenario to the optimization problem dataset.
+
+    This tool adds scenario metadata (path, name, description) to the project settings.
+    The scenario JSON file should already have been created using the write_file tool
+    before calling this function.
+
+    Args:
+        request_path: Path to the JSON file containing the scenario data (relative to project directory)
+        name: Optional name/identifier for the scenario
+        description: Optional human-readable description of the scenario
+
+    Returns:
+        Confirmation message with the added scenario details.
+    """
+    runtime = get_runtime(Context)
+    if not runtime.context.project_settings:
+        return "Error: Project settings not initialized."
+
+    scenario = Scenario(
+        name=name,
+        description=description,
+        request=Path(request_path),
+    )
+    runtime.context.project_settings.add_scenario(scenario)
+
+    scenario_id = f"'{name}'" if name else "unnamed scenario"
+    return (
+        f"Successfully added scenario {scenario_id} with request path '{request_path}'."
+    )
+
+
+def remove_scenario(scenario_name: str) -> str:
+    """Remove an existing scenario from the optimization problem dataset by its name.
+
+    This removes the scenario metadata from project settings. It does not delete
+    the actual JSON file containing the scenario data.
+
+    Args:
+        scenario_name: The name identifier of the scenario to remove
+
+    Returns:
+        Confirmation message indicating whether the scenario was removed.
+    """
+    runtime = get_runtime(Context)
+    if not runtime.context.project_settings:
+        return "Error: Project settings not initialized."
+
+    removed = runtime.context.project_settings.remove_scenario(scenario_name)
+    if removed:
+        return f"Successfully removed scenario '{scenario_name}'."
+    return f"Scenario '{scenario_name}' not found."

@@ -36,7 +36,7 @@ class Context(BaseModel):
     )
 
     project_settings: Annotated[Optional[ProjectSettings], SkipJsonSchema()] = Field(
-        default_factory=lambda: ProjectSettings(directory=Path("./working_dir")),
+        default_factory=lambda: ProjectSettings(directory=Path.cwd()),
         description="The project settings containing problem specification, "
         "constraints, and schema definitions.",
     )
