@@ -49,6 +49,9 @@ packages = ["react_agent", "deepagents_cli"]
 "*" = ["py.typed"]
 
 [tool.ruff]
+exclude = [
+    "src/deepagents_cli",
+]
 lint.select = [
     "E",    # pycodestyle
     "F",    # pyflakes
@@ -70,6 +73,11 @@ lint.ignore = [
 "tests/*" = ["D", "UP"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.mypy]
+exclude = [
+    "src/deepagents_cli/.*",
+]
 
 [dependency-groups]
 dev = [
