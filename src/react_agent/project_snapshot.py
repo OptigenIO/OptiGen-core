@@ -1,57 +1,21 @@
-"""Define project snapshot models for optimization problem specifications."""
+"""Project settings management for optimization problems."""
 
-import os
-import pathlib
-import tempfile
 import threading
+from collections.abc import Callable, Mapping
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Generator, TypeVar
 
-from pydantic import BaseModel
+from react_agent.storage import JsonFileStore
+from react_agent.types import (
+    Constraint,
+    ProjectSnapshot,
+    RunSolverScript,
+    Scenario,
+    SolverScript,
+)
 
-
-class Constraint(BaseModel):
-    """Represents a constraint or objective in an optimization problem."""
-
-    name: str
-    description: str
-    type: Literal["hard", "soft"]
-    rank: Optional[int] = None
-    formula: str = ""
-    where: str = ""
-
-    def __eq__(self, other: object) -> bool:
-        """Check equality based on constraint name."""
-        if not isinstance(other, Constraint):
-            return False
-        return self.name == other.name
-
-
-class UserAPISchemaDefinition(BaseModel):
-    """Defines the request and response schemas for the user API."""
-
-    request_schema: Dict[str, Any]
-    response_schema: Dict[str, Any]
-
-
-class Scenario(BaseModel):
-    """Represents a scenario in the optimization problem."""
-
-    name: str | None = None
-    description: str | None = None
-    request: pathlib.Path | None = None
-
-
-class ProjectSnapshot(BaseModel):
-    """Represents a complete snapshot of the optimization problem configuration."""
-
-    optigen_snapshot_version: str = "0.0.3"
-    snapshot_version: int = 1
-    title: str | None = None
-    description: str | None = None
-    constraints: list[Constraint] = []
-    schema_definition: UserAPISchemaDefinition | None = None
-    dataset: list[Scenario] | None = None
+T = TypeVar("T")
 
 
 class ProjectSettings:
@@ -65,12 +29,11 @@ class ProjectSettings:
     ):
         """Initialize project settings from directory or provided snapshot."""
         self.directory = directory
-        self.settings_file = directory / "optigen.json"
+        self.store = JsonFileStore(directory / "optigen.json")
 
-        if self.settings_file.exists():
-            self.project_snapshot = ProjectSnapshot.model_validate_json(
-                self.settings_file.read_text()
-            )
+        content = self.store.load()
+        if content:
+            self.project_snapshot = ProjectSnapshot.model_validate_json(content)
         else:
             self.project_snapshot = project_snapshot or ProjectSnapshot()
 
@@ -80,35 +43,17 @@ class ProjectSettings:
         This should only be called when holding the lock.
         Used to capture the latest state before modifications.
         """
-        if self.settings_file.exists():
-            self.project_snapshot = ProjectSnapshot.model_validate_json(
-                self.settings_file.read_text()
-            )
+        content = self.store.load()
+        if content:
+            self.project_snapshot = ProjectSnapshot.model_validate_json(content)
 
     def _persist_unlocked(self) -> None:
         """Persist settings without acquiring lock.
 
         This should only be called when already holding the lock.
-        Performs atomic write by writing to temp file then renaming.
+        Performs atomic write via JsonFileStore.
         """
-        self.directory.mkdir(parents=True, exist_ok=True)
-
-        # Atomic write: write to temp file, then rename
-        fd, tmp_path = tempfile.mkstemp(
-            dir=self.directory, prefix=".optigen_", suffix=".tmp"
-        )
-        try:
-            with os.fdopen(fd, "w") as f:
-                f.write(self.project_snapshot.model_dump_json(indent=2))
-            # os.replace is atomic on POSIX systems
-            os.replace(tmp_path, self.settings_file)
-        except Exception:
-            # Clean up temp file on failure
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
+        self.store.save_atomic(self.project_snapshot.model_dump_json(indent=2))
 
     def persist_settings(self) -> None:
         """Persist the current project snapshot to disk with thread safety.
@@ -119,30 +64,118 @@ class ProjectSettings:
         with self._lock:
             self._persist_unlocked()
 
-    @property
-    def title(self) -> str | None:
-        """Get the project title."""
-        return self.project_snapshot.title
+    @contextmanager
+    def _transaction(self) -> Generator[None, None, None]:
+        """Context manager for thread-safe read-modify-write transactions.
 
-    @property
-    def description(self) -> str | None:
-        """Get the project description."""
-        return self.project_snapshot.description
+        Acquires lock, reloads from disk, yields control, then persists.
+        Ensures atomic operations and prevents forgetting to persist or reload.
+        """
+        with self._lock:
+            self._reload_from_disk()
+            before = self.project_snapshot
+            try:
+                yield
+            except Exception:
+                self.project_snapshot = before
+                raise
+            else:
+                self._persist_unlocked()
+
+    def _add_unique(
+        self,
+        items: list[T],
+        item: T,
+        key: Callable[[T], Any],
+        error_message: str,
+    ) -> None:
+        """Add an item to a list if it doesn't already exist based on key.
+
+        Args:
+            items: The list to add to.
+            item: The item to add.
+            key: Function to extract the key from an item for duplicate checking.
+            error_message: Error message to raise if duplicate found.
+
+        Raises:
+            ValueError: If an item with the same key already exists.
+        """
+        if any(key(existing) == key(item) for existing in items):
+            raise ValueError(error_message)
+        items.append(item)
+
+    def _remove_by_key(
+        self,
+        items: list[T],
+        key_value: Any,
+        key: Callable[[T], Any],
+    ) -> bool:
+        """Remove items from a list by key value.
+
+        Args:
+            items: The list to remove from.
+            key_value: The key value to match.
+            key: Function to extract the key from an item.
+
+        Returns:
+            True if any items were removed, False otherwise.
+        """
+        original_length = len(items)
+        items[:] = [item for item in items if key(item) != key_value]
+        return len(items) < original_length
+
+    def _get_by_key(
+        self,
+        items: list[T],
+        key_value: Any,
+        key: Callable[[T], Any],
+    ) -> T | None:
+        """Get an item from a list by key value.
+
+        Args:
+            items: The list to search.
+            key_value: The key value to match.
+            key: Function to extract the key from an item.
+
+        Returns:
+            The matching item, or None if not found.
+        """
+        for item in items:
+            if key(item) == key_value:
+                return item
+        return None
+
+    def _update_by_key(
+        self,
+        items: list[T],
+        key_value: Any,
+        key: Callable[[T], Any],
+        update_fn: Callable[[T], T],
+    ) -> bool:
+        """Update an item in a list by key value.
+
+        Args:
+            items: The list to update.
+            key_value: The key value to match.
+            key: Function to extract the key from an item.
+            update_fn: Function to create the updated item from the existing one.
+
+        Returns:
+            True if the item was found and updated, False otherwise.
+        """
+        for i, item in enumerate(items):
+            if key(item) == key_value:
+                items[i] = update_fn(item)
+                return True
+        return False
 
     def update(self, **kwargs: Any) -> None:
         """Update project settings with provided keyword arguments.
 
         Thread-safe: reloads latest state from disk, applies changes, then persists.
         """
-        with self._lock:
-            self._reload_from_disk()
+        with self._transaction():
             self.project_snapshot = self.project_snapshot.model_copy(update=kwargs)
-            self._persist_unlocked()
-
-    @property
-    def constraints(self) -> list[Constraint]:
-        """Get the list of constraints."""
-        return self.project_snapshot.constraints
 
     def add_constraint(self, constraint: Constraint) -> None:
         """Add a constraint and persist changes.
@@ -152,89 +185,46 @@ class ProjectSettings:
         Raises:
             ValueError: If a constraint with the same name already exists.
         """
-        with self._lock:
-            self._reload_from_disk()
-            if any(
-                c.name == constraint.name for c in self.project_snapshot.constraints
-            ):
-                raise ValueError(
-                    f"Constraint with name '{constraint.name}' already exists."
-                )
-            self.project_snapshot.constraints.append(constraint)
-            self._persist_unlocked()
+        with self._transaction():
+            self._add_unique(
+                self.project_snapshot.constraints,
+                constraint,
+                key=lambda c: c.name,
+                error_message=f"Constraint with name '{constraint.name}' already exists.",
+            )
 
     def remove_constraint(self, constraint_name: str) -> bool:
         """Remove a constraint by name. Returns True if found and removed.
 
         Thread-safe: reloads latest state, removes constraint, then persists.
         """
-        with self._lock:
-            self._reload_from_disk()
-            original_length = len(self.project_snapshot.constraints)
-            self.project_snapshot.constraints = [
-                c
-                for c in self.project_snapshot.constraints
-                if c.name != constraint_name
-            ]
-            removed = len(self.project_snapshot.constraints) < original_length
-            if removed:
-                self._persist_unlocked()
-            return removed
+        with self._transaction():
+            return self._remove_by_key(
+                self.project_snapshot.constraints,
+                constraint_name,
+                key=lambda c: c.name,
+            )
 
     def get_constraint_by_name(self, name: str) -> Constraint | None:
         """Get a constraint by its name, or None if not found."""
-        for constraint in self.project_snapshot.constraints:
-            if constraint.name == name:
-                return constraint
-        return None
+        return self._get_by_key(
+            self.project_snapshot.constraints,
+            name,
+            key=lambda c: c.name,
+        )
 
     def update_constraint(self, name: str, **kwargs: Any) -> bool:
         """Update a constraint by name. Returns True if found and updated.
 
         Thread-safe: reloads latest state, updates constraint, then persists.
         """
-        with self._lock:
-            self._reload_from_disk()
-            constraint = None
-            for c in self.project_snapshot.constraints:
-                if c.name == name:
-                    constraint = c
-                    break
-
-            if constraint is None:
-                return False
-
-            updated = constraint.model_copy(update=kwargs)
-
-            for i, c in enumerate(self.project_snapshot.constraints):
-                if c.name == name:
-                    self.project_snapshot.constraints[i] = updated
-                    break
-
-            self._persist_unlocked()
-            return True
-
-    @property
-    def schema_definition(self) -> UserAPISchemaDefinition | None:
-        """Get the API schema definition."""
-        return self.project_snapshot.schema_definition
-
-    def get_request_schema(self) -> dict[str, Any] | None:
-        """Get the request schema, or None if not defined."""
-        if self.project_snapshot.schema_definition:
-            return self.project_snapshot.schema_definition.request_schema
-        return None
-
-    def get_response_schema(self) -> dict[str, Any] | None:
-        """Get the response schema, or None if not defined."""
-        if self.project_snapshot.schema_definition:
-            return self.project_snapshot.schema_definition.response_schema
-        return None
-
-    @property
-    def dataset(self) -> list[Scenario] | None:
-        """Get the list of scenarios."""
-        return self.project_snapshot.dataset
+        with self._transaction():
+            return self._update_by_key(
+                self.project_snapshot.constraints,
+                name,
+                key=lambda c: c.name,
+                update_fn=lambda c: c.model_copy(update=kwargs),
+            )
 
     def add_scenario(self, scenario: Scenario) -> None:
         """Add a scenario and persist changes.
@@ -244,44 +234,83 @@ class ProjectSettings:
         Raises:
             ValueError: If a scenario with the same name already exists.
         """
-        with self._lock:
-            self._reload_from_disk()
-            if self.project_snapshot.dataset is None:
-                self.project_snapshot.dataset = []
-
-            if scenario.name and any(
-                s.name == scenario.name for s in self.project_snapshot.dataset
-            ):
-                raise ValueError(
-                    f"Scenario with name '{scenario.name}' already exists."
-                )
-
-            self.project_snapshot.dataset.append(scenario)
-            self._persist_unlocked()
+        with self._transaction():
+            self._add_unique(
+                self.project_snapshot.dataset,
+                scenario,
+                key=lambda s: s.name,
+                error_message=f"Scenario with name '{scenario.name}' already exists.",
+            )
 
     def remove_scenario(self, scenario_name: str) -> bool:
         """Remove a scenario by name. Returns True if found and removed.
 
         Thread-safe: reloads latest state, removes scenario, then persists.
         """
-        with self._lock:
-            self._reload_from_disk()
-            if self.project_snapshot.dataset is None:
-                return False
-
-            original_length = len(self.project_snapshot.dataset)
-            self.project_snapshot.dataset = [
-                s for s in self.project_snapshot.dataset if s.name != scenario_name
-            ]
-            removed = len(self.project_snapshot.dataset) < original_length
-            if removed:
-                self._persist_unlocked()
-            return removed
+        with self._transaction():
+            return self._remove_by_key(
+                self.project_snapshot.dataset,
+                scenario_name,
+                key=lambda s: s.name,
+            )
 
     def get_scenario_by_name(self, name: str) -> Scenario | None:
         """Get a scenario by its name, or None if not found."""
-        if self.project_snapshot.dataset is not None:
-            for scenario in self.project_snapshot.dataset:
-                if scenario.name == name:
-                    return scenario
-        return None
+        return self._get_by_key(
+            self.project_snapshot.dataset,
+            name,
+            key=lambda s: s.name,
+        )
+
+    def add_solver_script(self, solver_script: SolverScript) -> None:
+        """Add a solver script and persist changes.
+
+        Thread-safe: reloads latest state, checks for duplicates, adds, then persists.
+
+        Raises:
+            ValueError: If a solver script with the same name already exists.
+        """
+        with self._transaction():
+            self._add_unique(
+                self.project_snapshot.solver_scripts,
+                solver_script,
+                key=lambda s: s.name,
+                error_message=f"Solver script with name '{solver_script.name}' already exists.",
+            )
+
+    def remove_solver_script(self, solver_script_name: str) -> bool:
+        """Remove a solver script by name. Returns True if found and removed.
+
+        Thread-safe: reloads latest state, removes solver script, then persists.
+        """
+        with self._transaction():
+            return self._remove_by_key(
+                self.project_snapshot.solver_scripts,
+                solver_script_name,
+                key=lambda s: s.name,
+            )
+
+    def get_solver_script_by_name(self, name: str) -> SolverScript | None:
+        """Get a solver script by its name, or None if not found."""
+        return self._get_by_key(
+            self.project_snapshot.solver_scripts,
+            name,
+            key=lambda s: s.name,
+        )
+
+    def add_run(self, run: RunSolverScript) -> None:
+        """Add a solver run and persist changes.
+
+        Thread-safe: reloads latest state, checks for duplicates, adds, then persists.
+
+        Raises:
+            ValueError: If a run with the same solver_script_name and input_file already exists.
+        """
+        with self._transaction():
+            # Check for duplicates based on composite key (solver_script_name, input_file)
+            self._add_unique(
+                self.project_snapshot.runs,
+                run,
+                key=lambda r: (r.solver_script_name, r.input_file),
+                error_message=f"Run for solver '{run.solver_script_name}' with input '{run.input_file}' already exists.",
+            )
