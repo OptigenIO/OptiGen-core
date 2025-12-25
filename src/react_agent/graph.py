@@ -18,10 +18,13 @@ from react_agent.prompts import (
 from react_agent.tools import (
     add_constraint,
     add_scenario,
+    add_solver_script,
     available_python_dependencies,
     read_problem_specification,
     remove_constraint,
     remove_scenario,
+    remove_solver_script,
+    run,
     search,
     update_project_metadata,
     update_request_schema,
@@ -62,6 +65,9 @@ SUBAGENTS = [
             read_problem_specification,
             available_python_dependencies,
             search,
+            add_solver_script,
+            remove_solver_script,
+            run,
         ],
     },
 ]
@@ -106,7 +112,7 @@ def create_graph(
         backend = FilesystemBackend(root_dir=WORKING_DIR, virtual_mode=True)
 
     return create_deep_agent(
-        tools=[read_problem_specification, search],
+        tools=[read_problem_specification, search, run],
         backend=backend,
         system_prompt=BASE_SYSTEM_PROMPT,
         model=chat_model,

@@ -1,6 +1,8 @@
 """Define tools available to the agent for problem specification and search."""
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Literal, Optional, cast
 
@@ -8,7 +10,13 @@ from langchain_tavily import TavilySearch
 from langgraph.runtime import get_runtime
 
 from react_agent.context import Context
-from react_agent.project_snapshot import Constraint, Scenario, UserAPISchemaDefinition
+from react_agent.types import (
+    Constraint,
+    RunSolverScript,
+    Scenario,
+    SolverScript,
+    UserAPISchemaDefinition,
+)
 
 
 async def search(query: str) -> Optional[dict[str, Any]]:
@@ -49,8 +57,8 @@ def add_constraint(
     name: str,
     description: str,
     constraint_type: Literal["hard", "soft"],
-    formula: str = "",
-    where: str = "",
+    formula: str,
+    where: str,
     rank: Optional[int] = None,
 ) -> str:
     r"""Add a new constraint or objective to the optimization problem.
@@ -173,7 +181,9 @@ def update_request_schema(schema: dict[str, Any]) -> str:
     if not runtime.context.project_settings:
         return "Error: Project settings not initialized."
 
-    current_schema_def = runtime.context.project_settings.schema_definition
+    current_schema_def = (
+        runtime.context.project_settings.project_snapshot.schema_definition
+    )
     response_schema = current_schema_def.response_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
@@ -201,7 +211,9 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     if not runtime.context.project_settings:
         return "Error: Project settings not initialized."
 
-    current_schema_def = runtime.context.project_settings.schema_definition
+    current_schema_def = (
+        runtime.context.project_settings.project_snapshot.schema_definition
+    )
     request_schema = current_schema_def.request_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
@@ -213,8 +225,8 @@ def update_response_schema(schema: dict[str, Any]) -> str:
 
 def add_scenario(
     request_path: str,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
+    name: str,
+    description: str,
 ) -> str:
     """Add a new scenario to the optimization problem dataset.
 
@@ -267,3 +279,142 @@ def remove_scenario(scenario_name: str) -> str:
     if removed:
         return f"Successfully removed scenario '{scenario_name}'."
     return f"Scenario '{scenario_name}' not found."
+
+
+def add_solver_script(
+    name: str,
+    script_path: str,
+) -> str:
+    """Add a new solver script to the optimization problem.
+
+    This tool adds solver script metadata (name, script path) to the project settings.
+    The solver script file should already have been created using the write_file tool
+    before calling this function.
+
+    Args:
+        name: Unique identifier/name for the solver script
+        script_path: Optional path to the solver script file (relative to project directory)
+
+    Returns:
+        Confirmation message with the added solver script details.
+    """
+    runtime = get_runtime(Context)
+    if not runtime.context.project_settings:
+        return "Error: Project settings not initialized."
+
+    solver_script = SolverScript(
+        name=name,
+        script=Path(script_path),
+    )
+
+    try:
+        runtime.context.project_settings.add_solver_script(solver_script)
+    except ValueError as e:
+        return f"Error adding solver script: {e}"
+
+    script_info = f" with script path '{script_path}'"
+    return f"Successfully added solver script '{name}'{script_info}."
+
+
+def remove_solver_script(solver_script_name: str) -> str:
+    """Remove an existing solver script from the optimization problem by its name.
+
+    This removes the solver script metadata from project settings. It does not delete
+    the actual script file.
+
+    Args:
+        solver_script_name: The name identifier of the solver script to remove
+
+    Returns:
+        Confirmation message indicating whether the solver script was removed.
+    """
+    runtime = get_runtime(Context)
+    if not runtime.context.project_settings:
+        return "Error: Project settings not initialized."
+
+    removed = runtime.context.project_settings.remove_solver_script(solver_script_name)
+    if removed:
+        return f"Successfully removed solver script '{solver_script_name}'."
+    return f"Solver script '{solver_script_name}' not found."
+
+
+def run(
+    solver_script_name: str,
+    input_path: str,
+    output_path: str,
+) -> str:
+    """Run a solver script with an input file and save the output to a file.
+        When running a solver script, the input file should be the same as the one used to create the scenario.
+        This runs `python entrypoint.py input_file.json` and saves the output to a file with the same name as the input file, but with the extension replaced by .json.
+
+    Args:
+        solver_script_name: Name of the solver script to run
+        input_path: Path to the input file (relative to project directory)
+        output_path: Path to the output file (relative to project directory)
+
+    Returns:
+        Confirmation message with the run details.
+    """
+    runtime = get_runtime(Context)
+    if not runtime.context.project_settings:
+        return "Error: Project settings not initialized."
+
+    # Find the solver script
+    solver = runtime.context.project_settings.get_solver_script_by_name(
+        solver_script_name
+    )
+    if not solver:
+        return f"Error: Solver script '{solver_script_name}' not found."
+
+    if not solver.script:
+        return (
+            f"Error: Solver script '{solver_script_name}' has no script path defined."
+        )
+
+    # Resolve paths
+    project_dir = runtime.context.project_settings.directory
+    script_full_path = project_dir / solver.script
+    input_full_path = project_dir / input_path
+    output_full_path = project_dir / output_path
+
+    if not script_full_path.exists():
+        return f"Error: Script file '{script_full_path}' does not exist."
+    if not input_full_path.exists():
+        return f"Error: Input file '{input_full_path}' does not exist."
+
+    # Create output directory
+    output_full_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # Run command: python script.py input_file
+        # We run from project_dir so that relative paths in script might work if needed,
+        # but we pass absolute paths for script and input to be safe.
+        cmd = [sys.executable, str(script_full_path), str(input_full_path)]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(project_dir),
+        )
+
+        if result.returncode != 0:
+            return f"Error executing solver script: {result.stderr}"
+
+        # Write stdout to output file
+        output_full_path.write_text(result.stdout)
+
+    except Exception as e:
+        return f"Error running solver script: {e}"
+
+    run_record = RunSolverScript(
+        solver_script_name=solver_script_name,
+        input_file=Path(input_path),
+        output_file=Path(output_path),
+    )
+
+    try:
+        runtime.context.project_settings.add_run(run_record)
+    except ValueError as e:
+        return f"Error recording run: {e}"
+
+    return f"Successfully ran solver '{solver_script_name}' with input '{input_path}' and saved output to '{output_path}'."
