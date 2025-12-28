@@ -1,6 +1,6 @@
 [project]
 name = "OptiGen"
-version = "0.0.1"
+version = "0.1.0"
 description = "OptiGen is a tool for automatically generating optimization projects from natural language."
 authors = [
     { name = "Amir Rajabi", email = "amir@optigen.io" },
