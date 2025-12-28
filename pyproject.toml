@@ -49,7 +49,7 @@ requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["react_agent", "deepagents_cli", "deepagents_cli.integrations"]
+packages = {find = {where = ["src"], namespaces = false}}
 [tool.setuptools.package-dir]
 "" = "src"
 "langgraph.templates.react_agent" = "src/react_agent"
