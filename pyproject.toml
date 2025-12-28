@@ -1,14 +1,13 @@
 [project]
 name = "OptiGen"
-version = "0.1.0"
+version = "0.1.1"
 description = "OptiGen is a tool for automatically generating optimization projects from natural language."
 authors = [
     { name = "Amir Rajabi", email = "amir@optigen.io" },
 ]
-license = { file = "LICENSE" }
+license = { text = "Apache-2.0" }
 readme = "README.md"
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent",
@@ -50,11 +49,11 @@ requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["react_agent", "deepagents_cli"]
+# Automatically discover all packages and subpackages in src/
+packages = {find = {where = ["src"]}}
 [tool.setuptools.package-dir]
+"" = "src"
 "langgraph.templates.react_agent" = "src/react_agent"
-"react_agent" = "src/react_agent"
-"deepagents_cli" = "src/deepagents_cli"
 
 
 [tool.setuptools.package-data]
