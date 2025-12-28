@@ -18,12 +18,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
 ]
 requires-python = ">=3.11,<4.0"
-
-[project.urls]
-Homepage = "https://github.com/OptigenIO/OptiGen-core"
-Repository = "https://github.com/OptigenIO/OptiGen-core"
-Issues = "https://github.com/OptigenIO/OptiGen-core/issues"
-
 dependencies = [
     "langgraph>=1.0.0",
     "langchain-openai>=0.1.22",
@@ -38,6 +32,11 @@ dependencies = [
     "tavily>=1.1.0",
     "pyomo>=6.9.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/OptigenIO/OptiGen-core"
+Repository = "https://github.com/OptigenIO/OptiGen-core"
+Issues = "https://github.com/OptigenIO/OptiGen-core/issues"
 
 [project.scripts]
 optigen = "deepagents_cli.main:cli_main"
