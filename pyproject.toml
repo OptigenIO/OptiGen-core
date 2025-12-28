@@ -1,6 +1,6 @@
 [project]
 name = "OptiGen"
-version = "0.0.1"
+version = "0.1.0"
 description = "OptiGen is a tool for automatically generating optimization projects from natural language."
 authors = [
     { name = "Amir Rajabi", email = "amir@optigen.io" },
@@ -9,6 +9,13 @@ license = { file = "LICENSE" }
 readme = "README.md"
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta",
 ]
 requires-python = ">=3.11,<4.0"
 dependencies = [
@@ -25,6 +32,11 @@ dependencies = [
     "tavily>=1.1.0",
     "pyomo>=6.9.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/OptigenIO/OptiGen-core"
+Repository = "https://github.com/OptigenIO/OptiGen-core"
+Issues = "https://github.com/OptigenIO/OptiGen-core/issues"
 
 [project.scripts]
 optigen = "deepagents_cli.main:cli_main"
