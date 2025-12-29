@@ -1,42 +1,65 @@
 # OptiGen
 
-<img src="https://raw.githubusercontent.com/OptigenIO/OptiGen-core/main/static/logo.png" alt="OptiGen Logo" width="200"/>
+[![PyPI](https://img.shields.io/pypi/v/optigen)](https://pypi.org/project/optigen/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/optigen)](https://pypi.org/project/optigen/)
+[![License](https://img.shields.io/github/license/OptigenIO/OptiGen-core)](LICENSE)
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/OptigenIO/OptiGen-core/main/static/logo.png" alt="OptiGen Logo" width="200"/>
+</p>
 
-An AI-powered optimization modeling assistant built on [LangGraph](https://github.com/langchain-ai/langgraph).
+AI-powered optimization modeling assistant built on [LangGraph](https://github.com/langchain-ai/langgraph) and [Deep Agents](https://github.com/langchain-ai/deepagents). OptiGen guides users from problem formulation through schema design to executable solvers.
 
-OptiGen guides users through formulating optimization problems—from defining objectives and constraints to generating and validating Python solvers.
+## Quick Start (Usage First)
+
+1. Install from PyPI:
+   ```bash
+   pip install optigen
+   ```
+2. Set environment variables (either export them or create a `.env` in the project root):
+   ```bash
+   # Required
+   ANTHROPIC_API_KEY=your_anthropic_key  # Get your key at: https://console.anthropic.com/settings/keys
+
+   # Optional (enables web search tools)
+   TAVILY_API_KEY=your_tavily_key
+
+   # Optional (tracing)
+   LANGSMITH_TRACING=true
+   LANGSMITH_API_KEY=your_langsmith_key
+   LANGSMITH_PROJECT=optigen
+   ```
+3. Run the CLI:
+   ```bash
+   optigen
+   ```
 
 ## Features
 
-- **Guided Problem Formulation**: Step-by-step process to define objectives, constraints, and data schemas
-- **Quick Start Mode**: Build initial models using popular assumptions for common problem types (VRP, scheduling, inventory)
-- **Solver Generation**: Automatically generate Python optimization scripts
-- **Validation**: Test solvers against example data to verify correctness
+- **Problem Formulation (problem_formulator)**: Clarifies objectives and constraints before any schema or code is produced.
+- **Schema & Dataset Design (schema_dataset_designer)**: Creates request/response JSON schemas and example scenarios to match the agreed objectives/constraints.
+- **Solver Generation & Execution (solver_coder)**: Proposes solver strategies, uses available Python deps, and registers runnable entrypoints aligned to the schemas.
+- **Quick Start Mode**: Can auto-build initial models for common problem types (e.g., VRP, scheduling, inventory) with transparent assumptions.
+- **Tool-Aware Workflow**: Uses search (Tavily, optional), code execution, and dependency awareness to keep solutions consistent across steps.
 
-## Getting Started
+## Development (contributing)
 
-1. Copy `.env.example` to `.env` and add your API keys
-2. Start the development server:
+### Development Installation
+For contributing or modifying the source code:
+
+1. Clone the repo:
    ```bash
-   make start
+   git clone https://github.com/OptigenIO/OptiGen-core.git
+   cd OptiGen-core
    ```
-   This will start the LangGraph dev server and open the browser automatically.
+2. Install in editable mode:
+   ```bash
+   pip install -e .
+   ```
 
-Alternatively, you can open the project in [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio).
+### Development Commands
 
-## Development Commands
-
-Useful Make commands for development:
-
-- `make start` - Start the development server (stops any existing server first)
-- `make stop` - Stop the development server
-- `make dev` - Run LangGraph dev server
 - `make test` - Run unit tests
-- `make integration_tests` - Run integration tests
-- `make test_watch` - Run unit tests in watch mode
 - `make lint` - Run linters and type checkers
-- `make format` - Format code with ruff
-- `make spell_check` - Check spelling
-- `make help` - Show all available commands
-
+- `make format` - Format code
+- `make help` - Show all make commands

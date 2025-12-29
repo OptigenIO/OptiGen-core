@@ -157,6 +157,29 @@ async def simple_cli(
         )
         console.print()
 
+    if not settings.has_anthropic:
+        console.print(
+            "[bold red]❌ Error:[/bold red] ANTHROPIC_API_KEY not found.",
+        )
+        console.print(
+            "  To use Anthropic models, set your Anthropic API key:", style=COLORS["dim"]
+        )
+        console.print(
+            "    export ANTHROPIC_API_KEY=your_api_key_here", style=COLORS["dim"]
+        )
+        console.print(
+            "  Or add it to your .env file:", style=COLORS["dim"]
+        )
+        console.print(
+            "    ANTHROPIC_API_KEY=your_api_key_here", style=COLORS["dim"]
+        )
+        console.print(
+            "  Get your key at: https://console.anthropic.com/settings/keys",
+            style=COLORS["dim"],
+        )
+        console.print()
+        sys.exit(1)
+
     if settings.has_deepagents_langchain_project:
         console.print(
             f"[green]✓ LangSmith tracing enabled:[/green] Deepagents → '{settings.deepagents_langchain_project}'",
