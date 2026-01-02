@@ -163,7 +163,7 @@ def update_project_metadata(
     return "No updates provided."
 
 
-def update_request_schema(schema: dict[str, Any]) -> str:
+def update_request_schema(json_schema: dict[str, Any]) -> str:
     """Update the problem request schema (input format).
 
     Use this to set the request/response schemas once the model is clearer.
@@ -172,7 +172,7 @@ def update_request_schema(schema: dict[str, Any]) -> str:
     objectives and constraints are confirmed.
 
     Args:
-        schema: JSON schema dictionary defining the expected input format (OpenAPI format)
+        json_schema: JSON schema dictionary defining the expected input format (OpenAPI format)
 
     Returns:
         Confirmation message with the updated schema.
@@ -187,13 +187,13 @@ def update_request_schema(schema: dict[str, Any]) -> str:
     response_schema = current_schema_def.response_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
-        request_schema=schema, response_schema=response_schema
+        request_schema=json_schema, response_schema=response_schema
     )
     runtime.context.project_settings.update(schema_definition=new_schema_def)
-    return f"Successfully updated request schema: {json.dumps(schema, indent=2)}"
+    return f"Successfully updated request schema: {json.dumps(json_schema, indent=2)}"
 
 
-def update_response_schema(schema: dict[str, Any]) -> str:
+def update_response_schema(json_schema: dict[str, Any]) -> str:
     """Update the problem response schema (output format).
 
     Use this to set the request/response schemas once the model is clearer.
@@ -202,7 +202,7 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     objectives and constraints are confirmed.
 
     Args:
-        schema: JSON schema dictionary defining the expected output format (OpenAPI format)
+        json_schema: JSON schema dictionary defining the expected output format (OpenAPI format)
 
     Returns:
         Confirmation message with the updated schema.
@@ -217,10 +217,10 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     request_schema = current_schema_def.request_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
-        request_schema=request_schema, response_schema=schema
+        request_schema=request_schema, response_schema=json_schema
     )
     runtime.context.project_settings.update(schema_definition=new_schema_def)
-    return f"Successfully updated response schema: {json.dumps(schema, indent=2)}"
+    return f"Successfully updated response schema: {json.dumps(json_schema, indent=2)}"
 
 
 def add_scenario(
