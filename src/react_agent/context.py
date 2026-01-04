@@ -39,6 +39,7 @@ class Context(BaseModel):
         default_factory=lambda: ProjectSettings(directory=Path.cwd()),
         description="The project settings containing problem specification, "
         "constraints, and schema definitions.",
+        exclude=True,
     )
 
     def __init__(self, **data: Any) -> None:

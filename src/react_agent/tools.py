@@ -163,7 +163,7 @@ def update_project_metadata(
     return "No updates provided."
 
 
-def update_request_schema(schema: dict[str, Any]) -> str:
+def update_request_schema(json_schema: dict[str, Any]) -> str:
     """Update the problem request schema (input format).
 
     Use this to set the request/response schemas once the model is clearer.
@@ -172,7 +172,7 @@ def update_request_schema(schema: dict[str, Any]) -> str:
     objectives and constraints are confirmed.
 
     Args:
-        schema: JSON schema dictionary defining the expected input format (OpenAPI format)
+        json_schema: JSON schema dictionary defining the expected input format (OpenAPI format)
 
     Returns:
         Confirmation message with the updated schema.
@@ -187,13 +187,13 @@ def update_request_schema(schema: dict[str, Any]) -> str:
     response_schema = current_schema_def.response_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
-        request_schema=schema, response_schema=response_schema
+        request_schema=json_schema, response_schema=response_schema
     )
     runtime.context.project_settings.update(schema_definition=new_schema_def)
-    return f"Successfully updated request schema: {json.dumps(schema, indent=2)}"
+    return f"Successfully updated request schema: {json.dumps(json_schema, indent=2)}"
 
 
-def update_response_schema(schema: dict[str, Any]) -> str:
+def update_response_schema(json_schema: dict[str, Any]) -> str:
     """Update the problem response schema (output format).
 
     Use this to set the request/response schemas once the model is clearer.
@@ -202,7 +202,7 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     objectives and constraints are confirmed.
 
     Args:
-        schema: JSON schema dictionary defining the expected output format (OpenAPI format)
+        json_schema: JSON schema dictionary defining the expected output format (OpenAPI format)
 
     Returns:
         Confirmation message with the updated schema.
@@ -217,10 +217,10 @@ def update_response_schema(schema: dict[str, Any]) -> str:
     request_schema = current_schema_def.request_schema if current_schema_def else {}
 
     new_schema_def = UserAPISchemaDefinition(
-        request_schema=request_schema, response_schema=schema
+        request_schema=request_schema, response_schema=json_schema
     )
     runtime.context.project_settings.update(schema_definition=new_schema_def)
-    return f"Successfully updated response schema: {json.dumps(schema, indent=2)}"
+    return f"Successfully updated response schema: {json.dumps(json_schema, indent=2)}"
 
 
 def add_scenario(
@@ -340,17 +340,23 @@ def remove_solver_script(solver_script_name: str) -> str:
 
 def run(
     solver_script_name: str,
-    input_path: str,
-    output_path: str,
+    path_to_input_file: str,
+    path_to_output_file: str,
 ) -> str:
-    """Run a solver script with an input file and save the output to a file.
+    """Run a solver script registered in optigen.json with an input file and write the result to the output file.
+    
         When running a solver script, the input file should be the same as the one used to create the scenario.
-        This runs `python entrypoint.py input_file.json` and saves the output to a file with the same name as the input file, but with the extension replaced by .json.
+        This runs `python path_to_solver_entrypoint.py path_to_input_file.json path_to_output_file.json` and runs the solver on the 
+        input file and saves the output to the output file. A log file with the same name as the output file but with .log extension
+        is also created in the same directory, containing all stdout and stderr from the script execution.
+        
+        Place outputs in `outputs/unique_name_of_the_run.log`.
+
 
     Args:
         solver_script_name: Name of the solver script to run
-        input_path: Path to the input file (relative to project directory)
-        output_path: Path to the output file (relative to project directory)
+        path_to_input_file: Path to the input file (relative to project directory)
+        path_to_output_file: Path to the output file (relative to project directory)
 
     Returns:
         Confirmation message with the run details.
@@ -374,8 +380,8 @@ def run(
     # Resolve paths
     project_dir = runtime.context.project_settings.directory
     script_full_path = project_dir / solver.script
-    input_full_path = project_dir / input_path
-    output_full_path = project_dir / output_path
+    input_full_path = project_dir / path_to_input_file
+    output_full_path = project_dir / path_to_output_file
 
     if not script_full_path.exists():
         return f"Error: Script file '{script_full_path}' does not exist."
@@ -385,11 +391,19 @@ def run(
     # Create output directory
     output_full_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Create log file path (same directory as output, with .log extension)
+    log_full_path = output_full_path.with_suffix(".log")
+
     try:
-        # Run command: python script.py input_file
+        # Run command: python script.py input_file.json output_file.json
         # We run from project_dir so that relative paths in script might work if needed,
-        # but we pass absolute paths for script and input to be safe.
-        cmd = [sys.executable, str(script_full_path), str(input_full_path)]
+        # but we pass absolute paths for script, input, and output to be safe.
+        cmd = [
+            sys.executable,
+            str(script_full_path),
+            str(input_full_path),
+            str(output_full_path),
+        ]
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -397,19 +411,28 @@ def run(
             cwd=str(project_dir),
         )
 
+        # Write stdout and stderr to log file
+        log_content = []
+        if result.stdout:
+            log_content.append("=== STDOUT ===\n")
+            log_content.append(result.stdout)
+        if result.stderr:
+            log_content.append("\n=== STDERR ===\n")
+            log_content.append(result.stderr)
+        
+        if log_content:
+            log_full_path.write_text("".join(log_content))
+
         if result.returncode != 0:
             return f"Error executing solver script: {result.stderr}"
-
-        # Write stdout to output file
-        output_full_path.write_text(result.stdout)
 
     except Exception as e:
         return f"Error running solver script: {e}"
 
     run_record = RunSolverScript(
         solver_script_name=solver_script_name,
-        input_file=Path(input_path),
-        output_file=Path(output_path),
+        input_file=Path(path_to_input_file),
+        output_file=Path(path_to_output_file),
     )
 
     try:
@@ -417,4 +440,5 @@ def run(
     except ValueError as e:
         return f"Error recording run: {e}"
 
-    return f"Successfully ran solver '{solver_script_name}' with input '{input_path}' and saved output to '{output_path}'."
+    log_path = Path(path_to_output_file).with_suffix(".log")
+    return f"Successfully ran solver '{solver_script_name}' with input '{path_to_input_file}' and saved output to '{path_to_output_file}'. Log file saved to '{log_path}'."
