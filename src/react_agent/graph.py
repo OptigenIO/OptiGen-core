@@ -45,7 +45,7 @@ def get_subagents(extra_tools: list[Any] | None = None) -> list[dict[str, Any]]:
         remove_solver_script,
         run,
     ]
-    
+
     if extra_tools:
         solver_tools.extend(extra_tools)
 

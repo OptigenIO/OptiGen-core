@@ -1,7 +1,7 @@
 import pytest
 
-from react_agent.graph import create_graph
 from react_agent.context import Context
+from react_agent.graph import create_graph
 
 pytestmark = pytest.mark.anyio
 
