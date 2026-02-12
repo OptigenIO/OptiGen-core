@@ -173,3 +173,6 @@ cython_debug/
 
 # working_directory
 working_directory/
+
+# IDE settings
+*CLAUDE.md

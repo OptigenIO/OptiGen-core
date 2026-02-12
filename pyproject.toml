@@ -42,9 +42,6 @@ Issues = "https://github.com/OptigenIO/OptiGen-core/issues"
 optigen = "deepagents_cli.main:cli_main"
 
 
-[project.optional-dependencies]
-dev = ["mypy>=1.11.1", "ruff>=0.6.1", "pytest>=8.3.5"]
-
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -91,9 +88,16 @@ exclude = [
     "src/deepagents_cli/.*",
 ]
 
+[tool.codespell]
+skip = ".git,.venv,.mypy_cache,.ruff_cache,.pytest_cache,*.egg-info,uv.lock,working_directory,.langgraph_api"
+ignore-words = ".codespellignore"
+
 [dependency-groups]
 dev = [
     "anyio>=4.7.0",
     "langgraph-cli[inmem]>=0.4.7",
     "pytest>=8.3.5",
+    "mypy>=1.11.1",
+    "ruff>=0.6.1",
+    "codespell>=2.3.0",
 ]
