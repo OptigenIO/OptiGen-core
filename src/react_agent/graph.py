@@ -1,14 +1,15 @@
 """Define the agent graph configuration."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from deepagents import create_deep_agent  # type: ignore[import-untyped]
-from deepagents.backends import FilesystemBackend  # type: ignore[import-untyped]
+from deepagents import create_deep_agent
+from deepagents.backends import FilesystemBackend
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.memory import InMemorySaver
 
 from react_agent.context import Context
+from react_agent.mcp import get_mcp_tools
 from react_agent.prompts import (
     BASE_SYSTEM_PROMPT,
     PROBLEM_FORMULATOR_PROMPT,
@@ -31,52 +32,66 @@ from react_agent.tools import (
     update_response_schema,
 )
 
+if TYPE_CHECKING:
+    from deepagents.middleware.subagents import CompiledSubAgent, SubAgent
+
 WORKING_DIR = "./working_dir_default"
 
-SUBAGENTS = [
-    {
-        "name": "problem_formulator",
-        "description": "Clarifies and structures the optimization problem specification.",
-        "system_prompt": PROBLEM_FORMULATOR_PROMPT,
-        "tools": [
-            read_problem_specification,
-            update_project_metadata,
-            add_constraint,
-            remove_constraint,
-        ],
-    },
-    {
-        "name": "schema_dataset_designer",
-        "description": "Designs request/response schemas and manages the scenario dataset.",
-        "system_prompt": SCHEMA_DATASET_DESIGNER_PROMPT,
-        "tools": [
-            read_problem_specification,
-            update_request_schema,
-            update_response_schema,
-            add_scenario,
-            remove_scenario,
-        ],
-    },
-    {
-        "name": "solver_coder",
-        "description": "Proposes and refines solver implementation strategies.",
-        "system_prompt": SOLVER_CODER_PROMPT,
-        "tools": [
-            read_problem_specification,
-            available_python_dependencies,
-            search,
-            add_solver_script,
-            remove_solver_script,
-            run,
-        ],
-    },
-]
+
+def get_subagents(
+    extra_tools: list[Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Get the list of subagents, optionally injecting extra tools."""
+    solver_tools = [
+        read_problem_specification,
+        available_python_dependencies,
+        search,
+        add_solver_script,
+        remove_solver_script,
+        run,
+    ]
+
+    if extra_tools:
+        solver_tools.extend(extra_tools)
+
+    return [
+        {
+            "name": "problem_formulator",
+            "description": "Clarifies and structures the optimization problem specification.",
+            "system_prompt": PROBLEM_FORMULATOR_PROMPT,
+            "tools": [
+                read_problem_specification,
+                update_project_metadata,
+                add_constraint,
+                remove_constraint,
+            ],
+        },
+        {
+            "name": "schema_dataset_designer",
+            "description": "Designs request/response schemas and manages the scenario dataset.",
+            "system_prompt": SCHEMA_DATASET_DESIGNER_PROMPT,
+            "tools": [
+                read_problem_specification,
+                update_request_schema,
+                update_response_schema,
+                add_scenario,
+                remove_scenario,
+            ],
+        },
+        {
+            "name": "solver_coder",
+            "description": "Proposes and refines solver implementation strategies.",
+            "system_prompt": SOLVER_CODER_PROMPT,
+            "tools": solver_tools,
+        },
+    ]
 
 
-def create_graph(
+async def create_graph(
     model: BaseChatModel | str | None = None,
     backend: Any = None,
     context: Context | None = None,
+    extra_tools: list[Any] | None = None,
 ) -> Any:
     """Create the agent graph using the provided model and backend.
 
@@ -88,6 +103,8 @@ def create_graph(
         context: Optional Context instance. Only used if model is None to
                  determine the model. If None, creates a default Context
                  which will read from environment variables if available.
+        extra_tools: Optional list of additional tools (e.g., from MCP) to add to
+                    the solver_coder subagent.
 
     Returns:
         The configured agent graph.
@@ -111,16 +128,17 @@ def create_graph(
     if backend is None:
         backend = FilesystemBackend(root_dir=WORKING_DIR, virtual_mode=True)
 
+    # Load MCP tools if no extra tools provided (and not explicitly None)
+    # If extra_tools is None, we check environment for MCP tools
+    if extra_tools is None:
+        extra_tools = await get_mcp_tools()
+
     return create_deep_agent(
         tools=[read_problem_specification, search, run],
         backend=backend,
         system_prompt=BASE_SYSTEM_PROMPT,
         model=chat_model,
         context_schema=Context,
-        subagents=SUBAGENTS,
+        subagents=cast("list[SubAgent | CompiledSubAgent]", get_subagents(extra_tools)),
         checkpointer=InMemorySaver(),
     )
-
-
-# Create default graph for backward compatibility
-graph = create_graph()

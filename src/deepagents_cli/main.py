@@ -41,7 +41,7 @@ from deepagents_cli.integrations.sandbox_factory import (
 )
 from deepagents_cli.ui import TokenTracker, show_help
 
-# Import the graph creation function from react_agent
+# Import the graph creation functions from react_agent
 from react_agent.graph import create_graph
 
 
@@ -308,7 +308,8 @@ async def _run_agent_session(
         graph_backend = FilesystemBackend(root_dir=Path.cwd(), virtual_mode=True)
 
     # Create the graph with the provided model and backend
-    agent = create_graph(backend=graph_backend)
+    # Use create_graph to load MCP tools (e.g., Context7) if configured
+    agent = await create_graph(backend=graph_backend)
 
     # Baseline tokens set to 0 since we're using a different graph configuration
     baseline_tokens = 0

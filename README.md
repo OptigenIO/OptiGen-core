@@ -24,6 +24,10 @@ AI-powered optimization modeling assistant built on [LangGraph](https://github.c
    # Optional (enables web search tools)
    TAVILY_API_KEY=your_tavily_key
 
+   # Optional (enables Context7 documentation search for better code generation)
+   # Get your API key at: https://context7.com/dashboard
+   CONTEXT7_API_KEY=your_context7_key
+
    # Optional (tracing)
    LANGSMITH_TRACING=true
    LANGSMITH_API_KEY=your_langsmith_key
@@ -41,6 +45,10 @@ AI-powered optimization modeling assistant built on [LangGraph](https://github.c
 - **Solver Generation & Execution (solver_coder)**: Proposes solver strategies, uses available Python deps, and registers runnable entrypoints aligned to the schemas.
 - **Quick Start Mode**: Can auto-build initial models for common problem types (e.g., VRP, scheduling, inventory) with transparent assumptions.
 - **Tool-Aware Workflow**: Uses search (Tavily, optional), code execution, and dependency awareness to keep solutions consistent across steps.
+
+## Optional: Context7 Integration
+
+Enable [Context7](https://github.com/upstash/context7) documentation search by setting `CONTEXT7_API_KEY` (get your key at [context7.com/dashboard](https://context7.com/dashboard)). Requires Node.js >= v18.0.0. When enabled, the solver coder agent can search for up-to-date library documentation and examples before generating code, reducing bugs and deprecated API usage.
 
 ## Development (contributing)
 

@@ -344,12 +344,12 @@ def run(
     path_to_output_file: str,
 ) -> str:
     """Run a solver script registered in optigen.json with an input file and write the result to the output file.
-    
+
         When running a solver script, the input file should be the same as the one used to create the scenario.
-        This runs `python path_to_solver_entrypoint.py path_to_input_file.json path_to_output_file.json` and runs the solver on the 
+        This runs `python path_to_solver_entrypoint.py path_to_input_file.json path_to_output_file.json` and runs the solver on the
         input file and saves the output to the output file. A log file with the same name as the output file but with .log extension
         is also created in the same directory, containing all stdout and stderr from the script execution.
-        
+
         Place outputs in `outputs/unique_name_of_the_run.log`.
 
 
@@ -419,7 +419,7 @@ def run(
         if result.stderr:
             log_content.append("\n=== STDERR ===\n")
             log_content.append(result.stderr)
-        
+
         if log_content:
             log_full_path.write_text("".join(log_content))
 

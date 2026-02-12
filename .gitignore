@@ -170,3 +170,9 @@ cython_debug/
 
 # VSCode settings
 .vscode/
+
+# working_directory
+working_directory/
+
+# IDE settings
+*CLAUDE.md
