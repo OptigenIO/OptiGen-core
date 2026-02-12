@@ -16,6 +16,6 @@ warnings.filterwarnings(
     module="pydantic.main",
 )
 
-from react_agent.graph import graph
+from react_agent.graph import create_graph
 
-__all__ = ["graph"]
+__all__ = ["create_graph"]

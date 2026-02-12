@@ -30,6 +30,7 @@ dependencies = [
     "prompt-toolkit>=3.0.52",
     "tavily>=1.1.0",
     "pyomo>=6.9.5",
+    "langchain-mcp-adapters>=0.2.0",
 ]
 
 [project.urls]
