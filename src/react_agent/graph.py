@@ -1,9 +1,9 @@
 """Define the agent graph configuration."""
 
-from typing import Any
+from typing import Any, TYPE_CHECKING, cast
 
-from deepagents import create_deep_agent  # type: ignore[import-untyped]
-from deepagents.backends import FilesystemBackend  # type: ignore[import-untyped]
+from deepagents import create_deep_agent
+from deepagents.backends import FilesystemBackend
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langgraph.checkpoint.memory import InMemorySaver
@@ -32,10 +32,15 @@ from react_agent.tools import (
     update_response_schema,
 )
 
+if TYPE_CHECKING:
+    from deepagents.middleware.subagents import CompiledSubAgent, SubAgent
+
 WORKING_DIR = "./working_dir_default"
 
 
-def get_subagents(extra_tools: list[Any] | None = None) -> list[dict[str, Any]]:
+def get_subagents(
+    extra_tools: list[Any] | None = None,
+) -> list[dict[str, Any]]:
     """Get the list of subagents, optionally injecting extra tools."""
     solver_tools = [
         read_problem_specification,
@@ -134,6 +139,6 @@ async def create_graph(
         system_prompt=BASE_SYSTEM_PROMPT,
         model=chat_model,
         context_schema=Context,
-        subagents=get_subagents(extra_tools),
+        subagents=cast("list[SubAgent | CompiledSubAgent]", get_subagents(extra_tools)),
         checkpointer=InMemorySaver(),
     )
