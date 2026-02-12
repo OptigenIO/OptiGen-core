@@ -1,6 +1,6 @@
 """Define the agent graph configuration."""
 
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
